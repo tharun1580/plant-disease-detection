@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Disease Detection</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        h1 { color: #4ade80; font-size: 2rem; margin-bottom: 8px; }
+
+        .subtitle {
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(74, 222, 128, 0.4);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #4ade80;
+            background: rgba(74, 222, 128, 0.05);
+        }
+
+        .upload-icon { font-size: 3rem; margin-bottom: 10px; }
+
+        .upload-text { color: rgba(255,255,255,0.6); font-size: 0.9rem; }
+
+        input[type="file"] { display: none; }
+
+        .preview-img {
+            width: 100%;
+            max-height: 250px;
+            object-fit: contain;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            color: #1a1a2e;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(74, 222, 128, 0.3);
+        }
+
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .result-box.healthy {
+            border-color: rgba(74, 222, 128, 0.5);
+            background: rgba(74, 222, 128, 0.05);
+        }
+
+        .result-box.diseased {
+            border-color: rgba(251, 191, 36, 0.5);
+            background: rgba(251, 191, 36, 0.05);
+        }
+
+        .result-emoji { font-size: 2.5rem; margin-bottom: 10px; }
+
+        .result-disease {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .result-confidence { color: rgba(255,255,255,0.6); font-size: 0.9rem; }
+
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+
+        .info-box {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+        }
+
+        .info-text { color: white; font-size: 0.9rem; line-height: 1.5; }
+
+        /* Loading Spinner */
+        .loader-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loader-overlay.active { display: flex; }
+
+        .spinner {
+            width: 60px; height: 60px;
+            border: 5px solid rgba(74, 222, 128, 0.2);
+            border-top: 5px solid #4ade80;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            color: #4ade80;
+            font-size: 1.1rem;
+            font-weight: bold;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .loader-subtext {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            body { padding: 15px; align-items: flex-start; padding-top: 20px; }
+            .container { padding: 25px 20px; border-radius: 15px; }
+            h1 { font-size: 1.6rem; }
+            .subtitle { font-size: 0.85rem; margin-bottom: 20px; }
+            .upload-area { padding: 20px; }
+            .upload-icon { font-size: 2.5rem; }
+            .result-disease { font-size: 1.1rem; }
+            .result-emoji { font-size: 2rem; }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 10px; padding-top: 15px; }
+            .container { padding: 20px 15px; border-radius: 12px; }
+            h1 { font-size: 1.4rem; }
+            .subtitle { font-size: 0.8rem; margin-bottom: 15px; }
+            .upload-area { padding: 15px; margin-bottom: 15px; }
+            .upload-icon { font-size: 2rem; }
+            .upload-text { font-size: 0.8rem; }
+            .btn { padding: 12px 30px; font-size: 0.9rem; }
+            .result-disease { font-size: 1rem; }
+            .result-emoji { font-size: 1.8rem; }
+            .result-confidence { font-size: 0.85rem; }
+            .info-label { font-size: 0.7rem; }
+            .info-text { font-size: 0.85rem; }
+            .loader-text { font-size: 1rem; }
+            .loader-subtext { font-size: 0.8rem; }
+            .spinner { width: 50px; height: 50px; }
+        }
+
+        @media (max-width: 360px) {
+            h1 { font-size: 1.2rem; }
+            .container { padding: 15px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌿 Plant Disease Detection</h1>
+        <p class="subtitle">Upload a plant leaf image to detect diseases using AI</p>
+
+        {% if error %}
+        <div style="
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.4);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #f87171;
+            font-size: 0.9rem;
+        ">{{ error }}</div>
+        {% endif %}
+
+        <form action="/predict" method="post" enctype="multipart/form-data">
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                {% if image_path %}
+                    <img src="{{ image_path }}" class="preview-img" alt="Uploaded leaf">
+                {% else %}
+                    <div class="upload-icon">🍃</div>
+                    <p class="upload-text">Click to upload a plant leaf image</p>
+                    <p class="upload-text" style="margin-top: 5px;">Supports JPG, PNG, JPEG</p>
+                {% endif %}
+            </div>
+
+            <input type="file" id="fileInput" name="file"
+                   accept="image/*" onchange="this.form.submit()">
+
+            {% if not image_path %}
+            <button type="submit" class="btn">🔍 Detect Disease</button>
+            {% endif %}
+        </form>
+
+        {% if disease %}
+        <div class="result-box {{ status }}">
+            <div class="result-emoji">{{ emoji }}</div>
+            <div class="result-disease">{{ disease }}</div>
+            <div class="result-confidence">Confidence: {{ confidence }}%</div>
+
+            <div class="confidence-bar">
+                <div class="confidence-fill" style="width: {{ confidence }}%"></div>
+            </div>
+
+            <div style="margin-top: 14px;">
+                <span style="
+                    background: {{ severity_color }}22;
+                    color: {{ severity_color }};
+                    border: 1px solid {{ severity_color }};
+                    padding: 5px 16px;
+                    border-radius: 20px;
+                    font-size: 0.8rem;
+                    font-weight: bold;
+                ">⚡ Severity: {{ severity }}</span>
+            </div>
+
+            <div class="info-box" style="background: rgba(255,255,255,0.05); margin-top: 15px;">
+                <p class="info-label" style="color: rgba(255,255,255,0.5);">📋 DESCRIPTION</p>
+                <p class="info-text">{{ description }}</p>
+            </div>
+
+            <div class="info-box" style="
+                background: rgba(74,222,128,0.05);
+                border: 1px solid rgba(74,222,128,0.2);
+                margin-top: 10px;
+            ">
+                <p class="info-label" style="color: rgba(74,222,128,0.8);">💊 TREATMENT</p>
+                <p class="info-text">{{ treatment }}</p>
+            </div>
+        </div>
+
+        <form action="/" method="get" style="margin-top: 15px;">
+            <button type="submit" class="btn"
+                style="background: rgba(255,255,255,0.1); color: white;">
+                🔄 Try Another Image
+            </button>
+        </form>
+        {% endif %}
+
+    </div>
+
+    <div class="loader-overlay" id="loaderOverlay">
+        <div class="spinner"></div>
+        <p class="loader-text">🌿 Analyzing your plant...</p>
+        <p class="loader-subtext">AI model is detecting diseases</p>
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const area = document.querySelector('.upload-area');
+                    area.innerHTML = `<img src="${e.target.result}"
+                        class="preview-img" alt="Preview">`;
+                }
+                reader.readAsDataURL(file);
+                document.getElementById('loaderOverlay').classList.add('active');
+            }
+        });
+
+        window.addEventListener('load', function() {
+            document.getElementById('loaderOverlay').classList.remove('active');
+        });
+    </script>
+</body>
+</html>
