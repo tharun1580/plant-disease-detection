@@ -42,6 +42,35 @@ templates = Jinja2Templates(directory="templates")
 os.makedirs("static", exist_ok=True)
 os.makedirs("static/uploads", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+# History file path
+HISTORY_FILE = "model/history.json"
+
+# Load existing history or create empty
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+# Save prediction to history
+def save_to_history(image_path, disease, confidence, severity):
+    from datetime import datetime
+    history = load_history()
+
+    # Add new prediction at beginning
+    history.insert(0, {
+        "image": image_path,
+        "disease": disease,
+        "confidence": round(confidence, 2),
+        "severity": severity,
+        "time": datetime.now().strftime("%d %b %Y, %I:%M %p")
+    })
+
+    # Keep only last 10 predictions
+    history = history[:10]
+
+    with open(HISTORY_FILE, 'w') as f:
+        json.dump(history, f)
 
 # ============================================================
 # LOAD MODEL
@@ -377,6 +406,13 @@ async def predict(request: Request, file: UploadFile = File(...)):
         "Unknown": "#94a3b8"
     }
     severity_color = severity_colors.get(info["severity"], "#94a3b8")
+    # Save to history
+    save_to_history(
+        f"/static/uploads/{file.filename}",
+        disease,
+        confidence,
+        info["severity"]
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -394,6 +430,18 @@ async def predict(request: Request, file: UploadFile = File(...)):
         }
     )
 
+# ============================================================
+# HISTORY ROUTE
+# ============================================================
+
+@app.get("/history", response_class=HTMLResponse)
+async def history(request: Request):
+    history = load_history()
+    return templates.TemplateResponse(
+        request=request,
+        name="history.html",
+        context={"history": history}
+    )
 # ============================================================
 # REST API ENDPOINT
 # ============================================================
