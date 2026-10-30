@@ -1,0 +1,15 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Dataset (too large for GitHub)
+dataset/
+
+# Runtime files created by the app
+static/uploads/
+model/history.json
+
+.DS_Store
